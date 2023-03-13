@@ -16,8 +16,17 @@ type Params = {
 };
 
 export const getStaticPaths: GetStaticPaths<Params> = async () => {
+  const location = path.join(process.cwd(), "hooks");
+
+  const paths = fs
+    .readdirSync(location, { encoding: "utf-8" })
+    .filter((file) => !file.endsWith(".spec.tsx"))
+    .map((filename) => ({
+      params: { slug: [filename.replace(path.extname(filename), "")] },
+    }));
+
   return {
-    paths: [],
+    paths,
     fallback: "blocking",
   };
 };
