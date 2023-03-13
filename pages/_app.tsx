@@ -9,8 +9,11 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <Fragment>
       <Head>
-        <title></title>
+        <title>React Hooks</title>
+        <link rel="canonical" href="react-hooks.vercel.app" />
+        <meta name="robots" content="index,follow" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Reusable React hooks" />
       </Head>
 
       <NProgress />
