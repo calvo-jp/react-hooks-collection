@@ -1,8 +1,11 @@
+import { useToast, withToast } from "@/components/toast";
+import useClipboard from "@/hooks/use-clipboard";
 import clsx from "clsx";
 import fs from "fs";
 import { GetStaticPaths, GetStaticProps } from "next";
 import Link from "next/link";
 import path from "path";
+import { useEffect } from "react";
 import rehypePresetMinify from "rehype-preset-minify";
 import rehypePrism from "rehype-prism-plus";
 import rehypeStringify from "rehype-stringify";
@@ -42,8 +45,11 @@ type Props = {
     name: string;
     body: string;
     repo: string;
+    rawContent: string;
   };
 };
+
+const base_repo = "https://github.com/calvo-jp/react-hooks/tree/main/hooks/";
 
 export const getStaticProps: GetStaticProps<Props, Params> = async ({
   params,
@@ -58,7 +64,7 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
       .sort((i, j) => i.localeCompare(j))
       .map((name) => {
         const slug = name.replace(path.extname(name), "");
-        const repo = "https://github.com/calvo-jp/hooks/tree/hooks/" + name;
+        const repo = base_repo + name;
 
         return {
           slug,
@@ -76,9 +82,9 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
 
     const prefix = "```ts\n";
     const suffix = "```";
-    const content = fs.readFileSync(path.join(location, active.name), {
-      encoding,
-    });
+
+    const filepath = path.join(location, active.name);
+    const rawContent = fs.readFileSync(filepath, { encoding });
 
     const body = unified()
       .use(remarkParse)
@@ -87,13 +93,13 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
       .use(rehypeStringify, { allowDangerousHtml: true })
       .use(rehypePrism, { showLineNumbers: true, ignoreMissing: true })
       .use(rehypePresetMinify)
-      .processSync(prefix + content + suffix)
+      .processSync(prefix + rawContent + suffix)
       .toString();
 
     return {
       props: {
         files,
-        active: { ...active, body },
+        active: { ...active, body, rawContent },
       },
     };
   } catch {
@@ -101,7 +107,42 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
   }
 };
 
-export default function Index({ files, active }: Props) {
+function Index({ files, active }: Props) {
+  const toast = useToast();
+  const { onCopy, hasCopied } = useClipboard(active.rawContent, {
+    timeout: 3000,
+  });
+
+  useEffect(() => {
+    const handleCopy = (e: KeyboardEvent) => {
+      if (hasCopied) return;
+
+      if (e.ctrlKey && e.code === "KeyC") {
+        e.preventDefault();
+        e.stopPropagation();
+
+        onCopy();
+
+        toast.success({
+          placement: "bottom-end",
+          description: "Code has been copied",
+          duration: 3000,
+        });
+      }
+    };
+
+    document.addEventListener("keydown", handleCopy);
+
+    return () => {
+      document.removeEventListener("keydown", handleCopy);
+    };
+  }, [
+    //
+    toast,
+    hasCopied,
+    onCopy,
+  ]);
+
   return (
     <div className="flex items-start justify-center">
       <nav className="sticky top-0 p-4 md:p-8 lg:p-16">
@@ -122,9 +163,9 @@ export default function Index({ files, active }: Props) {
         </ul>
       </nav>
 
-      <main className="grow p-4 md:p-8 lg:p-16">
+      <main className="flex min-h-screen grow flex-col p-4 md:p-8 lg:p-16">
         <div
-          className="prose prose-neutral w-full max-w-none lg:prose-lg prose-headings:font-serif prose-a:text-sky-600 prose-a:no-underline prose-pre:w-fit prose-pre:max-w-full prose-pre:rounded-none prose-pre:bg-neutral-50 prose-pre:p-6 prose-pre:text-neutral-800 prose-ul:p-0 prose-li:list-inside prose-li:p-0 prose-li:marker:text-neutral-300 prose-img:max-h-[560px]"
+          className="prose prose-neutral w-full max-w-none grow lg:prose-lg prose-headings:font-serif prose-a:text-sky-600 prose-a:no-underline prose-pre:w-fit prose-pre:max-w-full prose-pre:rounded-none prose-pre:bg-neutral-50 prose-pre:p-6 prose-pre:text-neutral-800 prose-ul:p-0 prose-li:list-inside prose-li:p-0 prose-li:marker:text-neutral-300 prose-img:max-h-[560px]"
           dangerouslySetInnerHTML={{
             __html: active.body,
           }}
@@ -133,3 +174,5 @@ export default function Index({ files, active }: Props) {
     </div>
   );
 }
+
+export default withToast(Index);

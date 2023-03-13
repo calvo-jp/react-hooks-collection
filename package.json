@@ -10,6 +10,9 @@
     "test": "jest"
   },
   "dependencies": {
+    "@heroicons/react": "^2.0.16",
+    "@zag-js/react": "^0.3.10",
+    "@zag-js/toast": "^0.2.14",
     "clsx": "^1.2.1",
     "next": "13.2.4",
     "nprogress": "^0.2.0",

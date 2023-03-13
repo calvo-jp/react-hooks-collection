@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
-export default function useClipboard(initialValue: string = "") {
+type UseClipboardOptions = {
+  timeout?: number;
+};
+
+export default function useClipboard(
+  initialValue: string = "",
+  options?: UseClipboardOptions,
+) {
   const [value, setValue] = useState(initialValue);
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -22,13 +29,13 @@ export default function useClipboard(initialValue: string = "") {
     if (hasCopied) {
       timeout = setTimeout(() => {
         setHasCopied(false);
-      }, 1500);
+      }, options?.timeout ?? 1500);
     }
 
     return () => {
       timeout && clearTimeout(timeout);
     };
-  }, [hasCopied]);
+  }, [hasCopied, options?.timeout]);
 
   useEffect(() => {
     return () => {
