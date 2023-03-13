@@ -49,22 +49,21 @@ type Props = {
   };
 };
 
-const base_repo = "https://github.com/calvo-jp/react-hooks/tree/main/hooks/";
+const repo_base = "https://github.com/calvo-jp/react-hooks/tree/main/hooks/";
 
 export const getStaticProps: GetStaticProps<Props, Params> = async ({
   params,
 }) => {
-  const encoding: BufferEncoding = "utf-8";
   const location = path.join(process.cwd(), "hooks");
 
   try {
     const files = fs
-      .readdirSync(location, { encoding })
-      .filter((file) => !file.endsWith(".spec.tsx"))
+      .readdirSync(location, { encoding: "utf-8" })
+      .filter((file) => file.endsWith(".tsx") && !file.endsWith(".spec.tsx"))
       .sort((i, j) => i.localeCompare(j))
       .map((name) => {
         const slug = name.replace(path.extname(name), "");
-        const repo = base_repo + name;
+        const repo = repo_base + name;
 
         return {
           slug,
@@ -80,11 +79,9 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
 
     if (!active) throw new Error("");
 
-    const prefix = "```ts\n";
-    const suffix = "```";
-
-    const filepath = path.join(location, active.name);
-    const rawContent = fs.readFileSync(filepath, { encoding });
+    const rawContent = fs.readFileSync(path.join(location, active.name), {
+      encoding: "utf-8",
+    });
 
     const body = unified()
       .use(remarkParse)
@@ -93,7 +90,7 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
       .use(rehypeStringify, { allowDangerousHtml: true })
       .use(rehypePrism, { showLineNumbers: true, ignoreMissing: true })
       .use(rehypePresetMinify)
-      .processSync(prefix + rawContent + suffix)
+      .processSync("```ts\n" + rawContent + "```")
       .toString();
 
     return {
@@ -107,9 +104,48 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
   }
 };
 
-function Index({ files, active }: Props) {
+export default function Index({ files, active }: Props) {
+  return (
+    <div className="flex items-start justify-center">
+      <CopyShortcut>{active.rawContent}</CopyShortcut>
+
+      <nav className="sticky top-0 p-4 md:p-8 lg:p-16">
+        <ul className="flex flex-col lg:gap-0.5">
+          {files.map(({ slug, name }) => (
+            <li key={slug}>
+              <Link
+                href={`/${slug}`}
+                className={clsx(
+                  "transition-colors duration-300 hover:text-sky-700",
+                  slug === active.slug && "text-sky-700",
+                )}
+              >
+                {name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <main className="flex min-h-screen grow flex-col p-4 md:p-8 lg:p-16">
+        <div
+          className="prose prose-neutral w-full max-w-none grow lg:prose-lg prose-pre:w-fit prose-pre:max-w-full prose-pre:rounded-none prose-pre:bg-neutral-50 prose-pre:p-6 prose-pre:text-neutral-800"
+          dangerouslySetInnerHTML={{
+            __html: active.body,
+          }}
+        />
+      </main>
+    </div>
+  );
+}
+
+const CopyShortcut = withToast(function CopyShortcut({
+  children,
+}: {
+  children: string;
+}) {
   const toast = useToast();
-  const { onCopy, hasCopied } = useClipboard(active.rawContent, {
+  const { onCopy, hasCopied } = useClipboard(children, {
     timeout: 3000,
   });
 
@@ -143,36 +179,5 @@ function Index({ files, active }: Props) {
     onCopy,
   ]);
 
-  return (
-    <div className="flex items-start justify-center">
-      <nav className="sticky top-0 p-4 md:p-8 lg:p-16">
-        <ul className="flex flex-col lg:gap-0.5">
-          {files.map(({ slug, name }) => (
-            <li key={slug}>
-              <Link
-                href={`/${slug}`}
-                className={clsx(
-                  "transition-colors duration-300 hover:text-sky-700",
-                  slug === active.slug && "text-sky-700",
-                )}
-              >
-                {name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <main className="flex min-h-screen grow flex-col p-4 md:p-8 lg:p-16">
-        <div
-          className="prose prose-neutral w-full max-w-none grow lg:prose-lg prose-headings:font-serif prose-a:text-sky-600 prose-a:no-underline prose-pre:w-fit prose-pre:max-w-full prose-pre:rounded-none prose-pre:bg-neutral-50 prose-pre:p-6 prose-pre:text-neutral-800 prose-ul:p-0 prose-li:list-inside prose-li:p-0 prose-li:marker:text-neutral-300 prose-img:max-h-[560px]"
-          dangerouslySetInnerHTML={{
-            __html: active.body,
-          }}
-        />
-      </main>
-    </div>
-  );
-}
-
-export default withToast(Index);
+  return null;
+});
